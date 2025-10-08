@@ -1,10 +1,12 @@
-# Powerlytics - Phase 1: Data Processing Foundation
+# Powerlytics - Phase 2: Complete Data Processing and Aggregation System
 
-A modular electricity consumption data analysis project that processes smart meter CSV files and prepares clean datasets for analysis.
+A comprehensive electricity consumption data analysis project that processes smart meter CSV files and provides multi-level aggregated datasets for analysis and visualization.
 
 ## Project Overview
 
-Powerlytics is designed to analyze household electricity consumption data from smart meters. Phase 1 establishes the foundation by implementing data loading and cleaning capabilities with a clean, modular architecture.
+Powerlytics analyzes household electricity consumption data from smart meters with a structured, automated, and scalable approach. The system's architecture allows seamless exploration of electricity consumption patterns at different time resolutions — from 15-minute readings up to yearly and seasonal trends.
+
+**Phase 2** implements a complete aggregation framework that automatically computes all time-based summaries when the program runs, providing immediate access to multi-level analysis datasets.
 
 ## Project Structure
 
@@ -24,7 +26,14 @@ Powerlytics/
 
 ## Features
 
-### Phase 1 Implementation
+### Phase 2 Implementation - Complete Aggregation System
+- **Automated Multi-Level Aggregation**: All time-based summaries computed automatically
+- **8 Aggregation Levels**: Hourly, daily, weekly, monthly, seasonal, yearly, hour-of-day, and day-of-week
+- **Data Consistency Validation**: Ensures aggregation accuracy across all levels
+- **Memory-Efficient Processing**: All datasets stored in unified dictionary structure
+- **Ready for Visualization**: Pre-computed summaries enable instant analysis
+
+### Core Data Processing (Phase 1)
 - **Data Loading**: Intelligent CSV parsing that skips metadata rows
 - **Data Cleaning**: Standardizes column names and data types
 - **Data Validation**: Ensures data integrity and structure
@@ -35,7 +44,9 @@ Powerlytics/
 2. Clean and standardize column names (Date, Hour, KWH)
 3. Convert data types (datetime, float)
 4. Remove invalid or empty records
-5. Validate final dataset structure
+5. **Compute all aggregation levels automatically**
+6. Validate consistency across aggregation levels
+7. Store unified aggregations dictionary in memory
 
 ## Installation and Setup
 
@@ -58,24 +69,35 @@ pip install pandas
 
 ## Usage
 
-### Quick Start (Database-Ready)
+### Quick Start (Complete System with Aggregation)
 ```bash
-# Initialize the system and prepare data for database
+# Initialize the system with full aggregation processing
 python main.py
 ```
 
-### Advanced Usage with Individual Functions
+### Advanced Usage with Aggregation Functions
 ```python
-from src.powerlytics import process_electricity_data, get_data_summary
+from src.powerlytics import process_electricity_data, aggregate_all_levels
 
-# Process complete pipeline
-df_clean = process_electricity_data("data/oct24-oct25.csv")
+# Process complete pipeline with all aggregations
+df_clean, aggregations = process_electricity_data("data/oct24-oct25.csv")
 
-# Get data summary
-summary = get_data_summary(df_clean)
+# Access specific aggregation levels
+daily_data = aggregations['daily']
+monthly_data = aggregations['monthly']
+hourly_patterns = aggregations['hour_of_day']
+seasonal_trends = aggregations['seasonal']
 
-# Or use individual functions
+# Or compute individual aggregations
+from src.powerlytics import aggregate_data
+daily_summary = aggregate_data(df_clean, "daily")
+```
+
+### Individual Function Usage
+```python
 from src.powerlytics import load_raw_data, clean_raw_data
+
+# Load and clean data only
 df_raw = load_raw_data("data/oct24-oct25.csv")
 df_clean = clean_raw_data(df_raw)
 ```
@@ -96,28 +118,70 @@ df_clean = clean_raw_data(df_raw)
 | Hour | time | Start time of 15-minute interval |
 | KWH | float | Electricity consumption in kWh |
 
+### Aggregation Levels and Output Structure
+
+| Aggregation | Description | Output Columns | Records |
+|-------------|-------------|----------------|---------|
+| **Hourly** | Sum of 15-minute readings per hour | `Date`, `Hour`, `KWH` | ~8,760 |
+| **Daily** | Total daily consumption | `Date`, `KWH` | ~365 |
+| **Weekly** | Weekly consumption (Sunday-Saturday) | `Week`, `Year`, `KWH` | ~52 |
+| **Monthly** | Monthly consumption totals | `Month`, `Year`, `KWH` | ~12 |
+| **Seasonal** | Seasonal consumption (Israel climate) | `Season`, `Year`, `KWH` | ~8 |
+| **Yearly** | Annual consumption totals | `Year`, `KWH` | ~2 |
+| **Hour of Day** | Average consumption per clock hour | `Hour`, `Avg_KWH` | 24 |
+| **Day of Week** | Average consumption per weekday | `DayOfWeek`, `Avg_KWH` | 7 |
+
+#### Season Definitions (Israel - Coastal Climate)
+- **Winter:** December to February
+- **Spring:** March to May  
+- **Summer:** June to September
+- **Autumn:** October to November
+
 ## API Reference
 
 ### Core Functions
 
-#### `process_electricity_data(file_path: str, verbose: bool = True) -> pd.DataFrame`
-Complete data processing pipeline that orchestrates loading, cleaning, and validation.
+## API Reference
+
+### Core Functions
+
+#### `process_electricity_data(file_path: str, verbose: bool = True) -> tuple[pd.DataFrame, Dict[str, pd.DataFrame]]`
+Complete data processing pipeline that includes automatic multi-level aggregation.
 
 **Parameters:**
 - `file_path` (str): Path to the CSV file
 - `verbose` (bool): Whether to print progress information
 
 **Returns:**
-- `pd.DataFrame`: Clean, validated DataFrame ready for database operations
+- `tuple`: (df_clean, aggregations) where df_clean is the base dataset and aggregations contains all computed levels
 
-#### `get_data_summary(df: pd.DataFrame) -> dict`
-Generate comprehensive summary statistics for the electricity consumption data.
+#### `aggregate_all_levels(df: pd.DataFrame) -> Dict[str, pd.DataFrame]`
+Automatically compute all aggregation levels during runtime.
 
 **Parameters:**
 - `df` (pd.DataFrame): Clean electricity data DataFrame
 
 **Returns:**
-- `dict`: Summary with consumption stats, data quality metrics, and metadata
+- `Dict[str, pd.DataFrame]`: Dictionary with keys: hourly, daily, weekly, monthly, seasonal, yearly, hour_of_day, day_of_week
+
+#### `aggregate_data(df: pd.DataFrame, level: str = "daily") -> pd.DataFrame`
+Perform aggregation for a specific time level.
+
+**Parameters:**
+- `df` (pd.DataFrame): Clean electricity data DataFrame
+- `level` (str): Aggregation level (hourly, daily, weekly, monthly, seasonal, yearly, hour_of_day, day_of_week)
+
+**Returns:**
+- `pd.DataFrame`: Aggregated DataFrame for the specified level
+
+#### `get_aggregation_summary(aggregations: Dict[str, pd.DataFrame]) -> Dict[str, Dict]`
+Generate summary statistics for all aggregation levels.
+
+**Parameters:**
+- `aggregations` (Dict[str, pd.DataFrame]): All computed aggregations
+
+**Returns:**
+- `Dict[str, Dict]`: Summary with record counts and consumption statistics for each level
 
 #### `load_raw_data(file_path: str) -> pd.DataFrame`
 Loads raw CSV data while skipping metadata rows.
@@ -172,10 +236,12 @@ Validates the cleaned DataFrame structure.
 
 ## Future Phases
 
-The current implementation provides the foundation for upcoming phases:
-- **Phase 2**: Data aggregation and summary statistics
-- **Phase 3**: Data visualization and reporting
-- **Phase 4**: Advanced analytics and insights
+The current implementation provides comprehensive data processing and aggregation:
+- **Phase 1**: ✅ Data loading and cleaning foundation
+- **Phase 2**: ✅ Complete multi-level aggregation system
+- **Phase 3**: 🔄 Data visualization and interactive reporting
+- **Phase 4**: 📋 Advanced analytics and predictive insights
+- **Phase 5**: 🌐 Web dashboard and real-time monitoring
 
 ## Troubleshooting
 
