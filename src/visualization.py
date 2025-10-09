@@ -34,15 +34,19 @@ def _auto_detect_level(df: pd.DataFrame, level: str) -> str:
         return "hour_of_day"
     elif "DayOfWeek" in columns and "Avg_KWH" in columns:
         return "day_of_week"
-    elif "Date" in columns and "KWH" in columns:
-        return "daily"
+    elif "Date" in columns and "KWH" in columns and "Year" in columns:
+        # Distinguish between hourly and daily based on presence of Hour column
+        if "Hour" in columns:
+            return "hourly"
+        else:
+            return "daily"
     elif "Week" in columns and "KWH" in columns:
         return "weekly"
     elif "Month" in columns and "KWH" in columns:
         return "monthly"
     elif "Season" in columns and "KWH" in columns:
         return "seasonal"
-    elif "Year" in columns and "KWH" in columns:
+    elif "Year" in columns and "KWH" in columns and len(columns) == 2:
         return "yearly"
     
     # If no match found, return the original level (let other functions handle the error)
@@ -136,7 +140,7 @@ def _filter_by_date_range(
     start: Optional[Union[str, date, datetime]], 
     end: Optional[Union[str, date, datetime]]
 ) -> pd.DataFrame:
-    """Filter dataframe by date range."""
+    """Filter dataframe by date range with multi-year support."""
     if start is None and end is None:
         return df
     
@@ -164,13 +168,13 @@ def _filter_by_date_range(
                 df_filtered = df_filtered[df_filtered["Hour"] <= end_hour]
         return df_filtered
     
-    # Apply filtering based on aggregation level
+    # Apply filtering based on aggregation level - now with Year column support
     if level in ["hourly", "daily"] and "Date" in df.columns:
         if start is not None:
             df_filtered = df_filtered[df_filtered["Date"] >= start]
         if end is not None:
             df_filtered = df_filtered[df_filtered["Date"] <= end]
-    elif level in ["monthly", "yearly"] and "Year" in df.columns:
+    elif level in ["monthly", "yearly", "weekly", "seasonal"] and "Year" in df.columns:
         if start is not None:
             df_filtered = df_filtered[df_filtered["Year"] >= start.year]
         if end is not None:
